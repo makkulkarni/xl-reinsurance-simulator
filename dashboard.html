@@ -1,0 +1,1854 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Non-Proportional XL Reinsurance Pricing &amp; Risk Simulator</title>
+  <meta name="description" content="Actuarial simulation platform for non-proportional Excess of Loss (XL) reinsurance layer pricing, Rate on Line (ROL), burning cost with volatility loading, and exceedance probability curves.">
+  
+  <!-- Google Fonts: Outfit & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Plotly.js CDN for interactive charts -->
+  <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+
+  <style>
+    :root {
+      --bg-gradient: radial-gradient(circle at 10% 20%, #0d0f1f 0%, #05060d 100%);
+      --surface-bg: rgba(20, 23, 46, 0.85);
+      --surface-border: rgba(99, 102, 241, 0.2);
+      --surface-hover: rgba(30, 35, 70, 0.9);
+      --card-bg: rgba(22, 26, 52, 0.7);
+      
+      --text-primary: #f8fafc;
+      --text-secondary: #c7d2fe;
+      --text-muted: #818cf8;
+      --text-dim: #6366f1;
+      
+      --brand-primary: #6366f1;
+      --brand-accent: #818cf8;
+      --brand-glow: rgba(99, 102, 241, 0.35);
+      --brand-gold: #f59e0b;
+      --brand-purple: #a855f7;
+      
+      --color-success: #10b981;
+      --color-warning: #f59e0b;
+      --color-danger: #ef4444;
+      --color-info: #06b6d4;
+
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+      --shadow-md: 0 10px 25px -5px rgba(0, 0, 0, 0.45);
+      --shadow-lg: 0 20px 40px -10px rgba(0, 0, 0, 0.6);
+      --transition-base: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    [data-theme="light"] {
+      --bg-gradient: linear-gradient(135deg, #f5f7ff 0%, #eef2ff 50%, #f8faff 100%);
+      --surface-bg: rgba(255, 255, 255, 0.95);
+      --surface-border: rgba(99, 102, 241, 0.25);
+      --surface-hover: rgba(238, 242, 255, 1);
+      --card-bg: rgba(255, 255, 255, 0.92);
+      
+      --text-primary: #1e1b4b;
+      --text-secondary: #3730a3;
+      --text-muted: #4f46e5;
+      --text-dim: #6366f1;
+      
+      --brand-primary: #4f46e5;
+      --brand-accent: #6366f1;
+      --brand-glow: rgba(79, 70, 229, 0.2);
+      --shadow-md: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-gradient);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+      line-height: 1.5;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    /* Presentation mode */
+    body.presentation-mode .sidebar {
+      display: none !important;
+    }
+    body.presentation-mode .main-content {
+      margin-left: 0 !important;
+      max-width: 1440px;
+      margin: 0 auto;
+    }
+    body.presentation-mode .top-nav {
+      padding: 10px 30px;
+    }
+
+    /* App Shell */
+    .app-container {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Sidebar controls */
+    .sidebar {
+      width: 340px;
+      background: var(--surface-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-right: 1px solid var(--surface-border);
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      flex-shrink: 0;
+      overflow-y: auto;
+      height: 100vh;
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .brand-box {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--surface-border);
+    }
+
+    .brand-icon {
+      font-size: 34px;
+      filter: drop-shadow(0 4px 8px var(--brand-glow));
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      font-size: 1.15rem;
+      line-height: 1.25;
+      color: var(--text-primary);
+      letter-spacing: -0.02em;
+    }
+
+    .brand-subtitle {
+      font-size: 0.72rem;
+      color: var(--brand-primary);
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .group-label {
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .control-card {
+      background: var(--card-bg);
+      border: 1px solid var(--surface-border);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: var(--transition-base);
+    }
+
+    .control-card:hover {
+      border-color: var(--brand-primary);
+      background: var(--surface-hover);
+    }
+
+    .control-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .control-val {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: var(--brand-accent);
+    }
+
+    .range-slider {
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.1);
+      outline: none;
+      -webkit-appearance: none;
+      cursor: pointer;
+    }
+
+    [data-theme="light"] .range-slider {
+      background: rgba(0, 0, 0, 0.1);
+    }
+
+    .range-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--brand-primary);
+      cursor: pointer;
+      box-shadow: 0 0 10px var(--brand-glow);
+      transition: transform 0.15s ease;
+    }
+
+    .range-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    /* Inputs */
+    .input-text {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--surface-border);
+      color: var(--text-primary);
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 0.88rem;
+      outline: none;
+      font-family: inherit;
+    }
+
+    .input-text:focus {
+      border-color: var(--brand-primary);
+    }
+
+    .select-dropdown {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--surface-border);
+      color: var(--text-primary);
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 0.88rem;
+      outline: none;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .select-dropdown option {
+      background: #0d0f1f;
+      color: #fff;
+    }
+
+    [data-theme="light"] .select-dropdown option {
+      background: #fff;
+      color: #1e1b4b;
+    }
+
+    .file-drop-mini {
+      border: 1px dashed var(--surface-border);
+      border-radius: var(--radius-sm);
+      padding: 10px;
+      font-size: 0.8rem;
+      text-align: center;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: var(--transition-base);
+      background: rgba(0,0,0,0.15);
+    }
+    .file-drop-mini:hover {
+      border-color: var(--brand-primary);
+      color: var(--text-primary);
+    }
+    .file-drop-mini input[type="file"] {
+      display: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--brand-primary) 0%, #4338ca 100%);
+      color: #ffffff;
+      border: none;
+      padding: 12px 18px;
+      border-radius: var(--radius-sm);
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      cursor: pointer;
+      box-shadow: 0 4px 14px var(--brand-glow);
+      transition: var(--transition-base);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px var(--brand-glow);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--surface-border);
+      color: var(--text-secondary);
+      padding: 8px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: var(--transition-base);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-primary);
+      border-color: var(--brand-primary);
+    }
+
+    /* Main Content Area */
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      max-height: 100vh;
+    }
+
+    /* Top Nav */
+    .top-nav {
+      height: 72px;
+      border-bottom: 1px solid var(--surface-border);
+      background: var(--surface-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      position: sticky;
+      top: 0;
+      z-index: 30;
+    }
+
+    .tabs-list {
+      display: flex;
+      gap: 8px;
+    }
+
+    .nav-tab {
+      padding: 8px 18px;
+      border-radius: 30px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: transparent;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: var(--transition-base);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .nav-tab:hover {
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .nav-tab.active {
+      background: rgba(99, 102, 241, 0.15);
+      border-color: var(--brand-primary);
+      color: var(--brand-accent);
+      box-shadow: 0 2px 8px var(--brand-glow);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .icon-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--surface-border);
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.1rem;
+      transition: var(--transition-base);
+    }
+
+    .icon-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-primary);
+      border-color: var(--brand-primary);
+    }
+
+    /* Content Body */
+    .content-body {
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    .tab-pane {
+      display: none;
+      flex-direction: column;
+      gap: 28px;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .tab-pane.active {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Header */
+    .view-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 1px solid var(--surface-border);
+      padding-bottom: 18px;
+    }
+
+    .header-text h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.85rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 6px;
+    }
+
+    .header-text p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      max-width: 840px;
+    }
+
+    /* Metric Cards */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 18px;
+    }
+
+    @media (max-width: 1200px) {
+      .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .metric-card {
+      background: var(--surface-bg);
+      border: 1px solid var(--surface-border);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      box-shadow: var(--shadow-sm);
+      position: relative;
+      overflow: hidden;
+      transition: var(--transition-base);
+    }
+
+    .metric-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+      border-color: var(--brand-primary);
+    }
+
+    .metric-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--brand-primary);
+    }
+
+    .metric-card.warning::before {
+      background: var(--brand-gold);
+    }
+
+    .metric-card.danger::before {
+      background: var(--color-danger);
+    }
+
+    .metric-card.purple::before {
+      background: var(--brand-purple);
+    }
+
+    .metric-title {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .metric-value {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2.0rem;
+      font-weight: 800;
+      line-height: 1.1;
+      color: var(--text-primary);
+    }
+
+    .metric-sub {
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .badge-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      background: rgba(99, 102, 241, 0.15);
+      color: var(--brand-accent);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+    }
+
+    .badge-pill.warning {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--brand-gold);
+      border-color: rgba(245, 158, 11, 0.3);
+    }
+
+    .badge-pill.danger {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--color-danger);
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+
+    /* Charts Layout Grid */
+    .charts-grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+
+    @media (max-width: 1024px) {
+      .charts-grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .chart-panel {
+      background: var(--surface-bg);
+      border: 1px solid var(--surface-border);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .panel-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .chart-container {
+      width: 100%;
+      height: 380px;
+      position: relative;
+    }
+
+    /* Data Tables */
+    .table-container {
+      background: var(--surface-bg);
+      border: 1px solid var(--surface-border);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      box-shadow: var(--shadow-sm);
+      overflow-x: auto;
+    }
+
+    .table-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .styled-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+      text-align: left;
+    }
+
+    .styled-table th {
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text-muted);
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+      padding: 12px 14px;
+      border-bottom: 2px solid var(--surface-border);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .styled-table th:hover {
+      color: var(--brand-accent);
+    }
+
+    .styled-table td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--surface-border);
+      color: var(--text-secondary);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .styled-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text-primary);
+    }
+
+    /* Methodology Blocks */
+    .method-block {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--surface-border);
+      border-radius: var(--radius-sm);
+      padding: 18px;
+      margin-bottom: 14px;
+    }
+
+    .method-block h3 {
+      color: var(--brand-accent);
+      margin-bottom: 8px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.1rem;
+    }
+
+    .method-block p, .method-block li {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    .method-block ul {
+      margin-left: 20px;
+      margin-top: 8px;
+    }
+
+    /* App Footer */
+    .app-footer {
+      margin-top: auto;
+      border-top: 1px solid var(--surface-border);
+      padding: 20px 32px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .toast-msg {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--brand-primary);
+      color: white;
+      padding: 12px 20px;
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-lg);
+      font-weight: 600;
+      font-size: 0.9rem;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 999;
+    }
+    .toast-msg.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-container">
+  <!-- SIDEBAR CONTROLS -->
+  <aside class="sidebar">
+    <div class="brand-box">
+      <div class="brand-icon">⚡</div>
+      <div>
+        <div class="brand-title">XL Reinsurance</div>
+        <div class="brand-subtitle">Pricing &amp; Risk Simulator</div>
+      </div>
+    </div>
+
+    <!-- Pricing Parameters -->
+    <div class="control-group">
+      <div class="group-label">⚙️ Pricing &amp; Contract Terms</div>
+
+      <!-- XL Layers String -->
+      <div class="control-card">
+        <div class="control-header">
+          <span>XL Layers (Comma-separated)</span>
+        </div>
+        <input type="text" class="input-text" id="inputLayers" value="150-175, 175-200">
+        <div style="font-size:0.72rem; color:var(--text-muted);">
+          e.g. 100-150, 150-175, 175-200, 210-250 (% of scale)
+        </div>
+      </div>
+
+      <!-- Loss Ratio -->
+      <div class="control-card">
+        <div class="control-header">
+          <span>Loss Ratio (LR %)</span>
+          <span class="control-val" id="valLR">85.0%</span>
+        </div>
+        <input type="range" class="range-slider" id="sliderLR" min="10" max="150" step="1" value="85">
+        <div style="font-size:0.72rem; color:var(--text-muted);">
+          Scale factor = Premium Burn-Rate / (LR %)
+        </div>
+      </div>
+
+      <!-- Stdev Loading -->
+      <div class="control-card">
+        <div class="control-header">
+          <span>Stdev Loading Factor</span>
+          <span class="control-val" id="valLoading">0.20</span>
+        </div>
+        <input type="range" class="range-slider" id="sliderLoading" min="0.0" max="1.0" step="0.05" value="0.20">
+        <div style="font-size:0.72rem; color:var(--text-muted);">
+          Volatility loading scalar added to mean payouts
+        </div>
+      </div>
+
+      <!-- Reference Sum Insured -->
+      <div class="control-card">
+        <div class="control-header">
+          <span>Reference Sum Insured</span>
+        </div>
+        <input type="number" class="input-text" id="inputSI" value="100000" step="10000">
+      </div>
+    </div>
+
+    <!-- Stochastic Simulation Parameters -->
+    <div class="control-group">
+      <div class="group-label">🎲 Stochastic Setup</div>
+
+      <div class="control-card">
+        <div class="control-header">
+          <span>Distribution Family</span>
+        </div>
+        <select class="select-dropdown" id="selDist">
+          <option value="Normal" selected>Normal Distribution</option>
+          <option value="Lognormal">Lognormal (Heavy Tail)</option>
+          <option value="Gamma">Gamma (Skewed)</option>
+        </select>
+      </div>
+
+      <div class="control-card">
+        <div class="control-header">
+          <span>Simulations Count</span>
+          <span class="control-val" id="valSims">10,000</span>
+        </div>
+        <input type="range" class="range-slider" id="sliderSims" min="1000" max="25000" step="1000" value="10000">
+      </div>
+    </div>
+
+    <!-- Payout Data Upload -->
+    <div class="control-group">
+      <div class="group-label">📂 Historical Payout Series</div>
+      
+      <div class="control-card">
+        <div class="file-drop-mini" onclick="document.getElementById('filePayout').click()">
+          <span id="labelPayout">📥 Upload CSV (1 Column Payouts)</span>
+          <input type="file" id="filePayout" accept=".csv,.txt">
+          <div style="font-size:0.72rem; color:var(--brand-accent); margin-top:4px;" id="statusPayout">
+            ✓ 45 Historical Records Loaded
+          </div>
+        </div>
+      </div>
+
+      <div class="control-card">
+        <div class="control-header">
+          <span>Or Paste Numbers</span>
+        </div>
+        <textarea class="input-text" id="textPastePayout" rows="2" placeholder="e.g. 76735, 66731, 13910, 64732..."></textarea>
+      </div>
+    </div>
+
+    <!-- Primary Trigger -->
+    <button class="btn-primary" id="btnRecalculate">
+      <span>▶ Run XL Pricing Simulation</span>
+    </button>
+
+    <!-- Author Badge -->
+    <div style="margin-top:auto; padding-top:14px; border-top:1px solid var(--surface-border); font-size:0.75rem; color:var(--text-muted);">
+      <div>Reinsurance Pricing Engineering</div>
+      <div style="color:var(--brand-accent); font-weight:600; margin-top:2px;">Makarand Kulkarni</div>
+      <div style="font-size:0.7rem; color:var(--text-muted); opacity:0.8;">Non-Proportional XL Modeling</div>
+    </div>
+  </aside>
+
+  <!-- MAIN APP CONTAINER -->
+  <main class="main-content">
+    <!-- Top Navigation Bar -->
+    <header class="top-nav">
+      <nav class="tabs-list">
+        <button class="nav-tab active" data-tab="tab-results">
+          <span>📊 Pricing Results</span>
+        </button>
+        <button class="nav-tab" data-tab="tab-attachment">
+          <span>📐 Layer Structure &amp; Exceedance</span>
+        </button>
+        <button class="nav-tab" data-tab="tab-distribution">
+          <span>🎲 Distribution Diagnostics</span>
+        </button>
+        <button class="nav-tab" data-tab="tab-guide">
+          <span>📖 Pricing Methodology</span>
+        </button>
+      </nav>
+
+      <div class="nav-actions">
+        <button class="icon-btn" id="btnPresToggle" title="Presentation Mode (Fullscreen)">🖥️</button>
+        <button class="icon-btn" id="btnThemeToggle" title="Toggle Dark/Light Mode">🌓</button>
+        <button class="btn-secondary" id="btnExportCsv">
+          <span>📥 Export Results</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- CONTENT BODY -->
+    <div class="content-body">
+
+      <!-- ========================================== -->
+      <!-- TAB 1: PRICING RESULTS                     -->
+      <!-- ========================================== -->
+      <section class="tab-pane active" id="tab-results">
+        <div class="view-header">
+          <div class="header-text">
+            <h1>XL Treaty Pricing &amp; Layer Analysis</h1>
+            <p>
+              Actuarial burning cost pricing with standard deviation risk loading, scale expansion factor, and Rate on Line (ROL %) determination across excess layers.
+            </p>
+          </div>
+          <div class="badge-pill" id="badgeSimStats">Distribution: Normal | 10,000 Draws</div>
+        </div>
+
+        <!-- 4 Top KPI Cards -->
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-title">
+              <span>Premium Burn-Rate</span>
+              <span>Amount</span>
+            </div>
+            <div class="metric-value" id="kpiBurnRate">56,513.6</div>
+            <div class="metric-sub">
+              <span>Mean payout + 0.20 × SD</span>
+            </div>
+          </div>
+
+          <div class="metric-card purple">
+            <div class="metric-title">
+              <span>Scaling Factor</span>
+              <span>Burn-Rate / LR</span>
+            </div>
+            <div class="metric-value" id="kpiScale">66,486.5</div>
+            <div class="metric-sub">
+              <span id="kpiScaleSub">At 85.0% Loss Ratio</span>
+            </div>
+          </div>
+
+          <div class="metric-card info">
+            <div class="metric-title">
+              <span>Simulated Mean Payout</span>
+              <span>Expected Loss</span>
+            </div>
+            <div class="metric-value" id="kpiMeanPayout">51,391.6</div>
+            <div class="metric-sub">
+              <span id="kpiHistoricalStats">Data Mean: 51,391.6 | SD: 26,076.2</span>
+            </div>
+          </div>
+
+          <div class="metric-card warning">
+            <div class="metric-title">
+              <span>Total Layer Rate</span>
+              <span>Continuous Base</span>
+            </div>
+            <div class="metric-value" id="kpiTotalLayerRate">56,842.1</div>
+            <div class="metric-sub">
+              <span>Sum of all continuous layers</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="charts-grid-2">
+          <div class="chart-panel">
+            <div class="panel-header">
+              <div class="panel-title">📈 Simulated Payouts Distribution &amp; Attachments</div>
+            </div>
+            <div class="chart-container" id="chartPayoutDist"></div>
+          </div>
+
+          <div class="chart-panel">
+            <div class="panel-header">
+              <div class="panel-title">⚡ Rate on Line (ROL %) by Layer</div>
+            </div>
+            <div class="chart-container" id="chartROL"></div>
+          </div>
+        </div>
+
+        <!-- Results Table -->
+        <div class="table-container">
+          <div class="table-toolbar">
+            <div class="panel-title">📋 Reinsurance Layer Pricing Results</div>
+            <button class="btn-secondary" onclick="exportTableToCSV('tblLayerResults', 'xl_layer_pricing.csv')">
+              📥 Download Table CSV
+            </button>
+          </div>
+          <table class="styled-table" id="tblLayerResults">
+            <thead>
+              <tr>
+                <th>Layer</th>
+                <th>Attachment / Deductible</th>
+                <th>Limit / Cover</th>
+                <th>Average Layer Payout</th>
+                <th>Layer Rate (Loaded)</th>
+                <th>Relative Share (%)</th>
+                <th>Rate on Line (ROL %)</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyLayerResults">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+
+      <!-- ========================================== -->
+      <!-- TAB 2: LAYER STRUCTURE & EXCEEDANCE        -->
+      <!-- ========================================== -->
+      <section class="tab-pane" id="tab-attachment">
+        <div class="view-header">
+          <div class="header-text">
+            <h1>Reinsurance Tower &amp; Exceedance Probability</h1>
+            <p>
+              Examine the layer attachment points relative to catastrophic loss return periods (1-in-5, 1-in-10, 1-in-25, 1-in-50, 1-in-100 year events).
+            </p>
+          </div>
+        </div>
+
+        <div class="charts-grid-2">
+          <div class="chart-panel">
+            <div class="panel-header">
+              <div class="panel-title">📉 Exceedance Probability (EP) Curve &amp; Attachments</div>
+            </div>
+            <div class="chart-container" id="chartEPCurve"></div>
+          </div>
+
+          <div class="chart-panel">
+            <div class="panel-header">
+              <div class="panel-title">🏢 Reinsurance Tower Stacking</div>
+            </div>
+            <div class="chart-container" id="chartTower"></div>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <div class="panel-title">🎯 Catastrophic Return Period Scenarios</div>
+          <table class="styled-table">
+            <thead>
+              <tr>
+                <th>Return Period</th>
+                <th>Exceedance Probability</th>
+                <th>Aggregate Simulated Loss</th>
+                <th>Impact on XL Layers</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyReturnPeriods">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+
+      <!-- ========================================== -->
+      <!-- TAB 3: DISTRIBUTION DIAGNOSTICS            -->
+      <!-- ========================================== -->
+      <section class="tab-pane" id="tab-distribution">
+        <div class="view-header">
+          <div class="header-text">
+            <h1>Stochastic Distribution Diagnostics</h1>
+            <p>
+              Evaluate the statistical fit between Normal, Lognormal, and Gamma distributions against the historical empirical payouts.
+            </p>
+          </div>
+        </div>
+
+        <div class="chart-panel">
+          <div class="panel-header">
+            <div class="panel-title">📊 Multi-Distribution Density Comparison</div>
+          </div>
+          <div class="chart-container" id="chartMultiDist" style="height:420px;"></div>
+        </div>
+
+        <div class="table-container">
+          <div class="panel-title">📐 Fitted Distribution Parameters</div>
+          <table class="styled-table">
+            <thead>
+              <tr>
+                <th>Distribution</th>
+                <th>Parameter 1</th>
+                <th>Parameter 2</th>
+                <th>Skewness / Tail Behavior</th>
+                <th>P99 Tail Loss</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyDistParams">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+
+      <!-- ========================================== -->
+      <!-- TAB 4: PRICING METHODOLOGY                 -->
+      <!-- ========================================== -->
+      <section class="tab-pane" id="tab-guide">
+        <div class="view-header">
+          <div class="header-text">
+            <h1>XL Reinsurance Pricing Actuarial Framework</h1>
+            <p>
+              Mathematical foundations for non-proportional treaty pricing, burning cost scaling, and volatility margin allocations.
+            </p>
+          </div>
+        </div>
+
+        <div class="method-block">
+          <h3>1. Non-Proportional Layer Mechanics</h3>
+          <p>
+            An Excess of Loss (XL) reinsurance treaty is structured as <em>Limit xs Deductible</em> (e.g., $C 	ext{ xs } D$). For any annual aggregate claim payout $X$, the reinsurer pays:
+            <br>
+            $$Y = \min(\max(X - D, 0), C)$$
+            Where $D$ is the attachment point (deductible) and $C$ is the layer capacity (cover limit).
+          </p>
+        </div>
+
+        <div class="method-block">
+          <h3>2. Burning Cost with Volatility Loading</h3>
+          <p>
+            Rather than relying solely on pure burning cost (expected payout $\mathbb{E}[Y]$), reinsurance actuaries apply standard deviation loading to compensate for volatility and capital cost:
+            <br>
+            $$	ext{Layer Rate} = \mathbb{E}[Y] + \lambda 	imes \sigma(Y)$$
+            Where $\lambda$ is the <code>stdev_loading</code> scalar factor (typically 0.15 to 0.35 depending on market hardening).
+          </p>
+        </div>
+
+        <div class="method-block">
+          <h3>3. Treaty Scaling Factor</h3>
+          <p>
+            The contractual attachment bands (e.g. 150-175%) are expressed relative to the Subject Premium. The scaling factor is calculated from the reference Premium Burn-Rate Amount and the target Loss Ratio ($LR$):
+            <br>
+            $$	ext{Scale} = rac{\mathbb{E}[X] + \lambda 	imes \sigma(X)}{LR / 100}$$
+            For each specified layer $[l_i, u_i]$:
+            <br>
+            $$D_i = 	ext{Scale} 	imes rac{l_i}{100}, \quad C_i = 	ext{Scale} 	imes rac{u_i}{100} - D_i$$
+          </p>
+        </div>
+
+        <div class="method-block">
+          <h3>4. Rate on Line (ROL %)</h3>
+          <p>
+            Rate on Line measures the annual reinsurance premium as a percentage of the layer limit:
+            <br>
+            $$	ext{ROL} = \left(rac{	ext{Layer Rate}}{C_i}ight) 	imes 100\%$$
+            Higher ROL signifies that the layer is lower down in the tower (attaching closer to the expected loss) or has higher exceedance probability.
+          </p>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- App Footer -->
+    <footer class="app-footer">
+      <div>XL Reinsurance Pricing Simulator | Standalone Actuarial Edition</div>
+      <div>Non-Proportional Treaty Pricing &amp; Risk Capital Allocation</div>
+    </footer>
+  </main>
+</div>
+
+<div class="toast-msg" id="toast">Pricing calculated!</div>
+
+<!-- ========================================== -->
+<!-- JAVASCRIPT ANALYTICAL ENGINE               -->
+<!-- ========================================== -->
+<script>
+/**
+ * BUILT-IN SAMPLE PAYOUT DATA (45 years / scenarios)
+ */
+const DEFAULT_PAYOUTS = [
+  76735, 66731, 13910, 64732, 36382, 88816, 22980, 26642, 26114, 79373,
+  37956, 7388, 72309, 27800, 17665, 47310, 79919, 71270, 81377, 31724,
+  74658, 74574, 97083, 48829, 15780, 26236, 65133, 69448, 85022, 5882,
+  83041, 57538, 17694, 64857, 92040, 59322, 6995, 53935, 51076, 62325,
+  44929, 31583, 70428, 47028, 30053
+];
+
+/**
+ * APP STATE
+ */
+const State = {
+  payouts: [...DEFAULT_PAYOUTS],
+  layersStr: '150-175, 175-200',
+  lrPct: 85.0,
+  stdevLoading: 0.20,
+  sumInsured: 100000.0,
+  distType: 'Normal',
+  nSims: 10000,
+  simPayouts: [],
+  results: null,
+  theme: 'dark'
+};
+
+/**
+ * GAUSSIAN GENERATOR (Box-Muller)
+ */
+function randomNormal(mean, std) {
+  let u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  const z = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+  return mean + std * z;
+}
+
+/**
+ * LOGNORMAL GENERATOR (Method of Moments)
+ */
+function randomLognormal(mean, std) {
+  if (std <= 0 || mean <= 0) {
+    return Math.max(0, randomNormal(mean, Math.max(1e-6, std)));
+  }
+  const variance = std * std;
+  const mu_ln = Math.log(Math.max(1e-12, (mean * mean) / Math.sqrt(variance + mean * mean)));
+  const sigma_ln = Math.sqrt(Math.log(1 + variance / (mean * mean)));
+  return Math.exp(randomNormal(mu_ln, sigma_ln));
+}
+
+/**
+ * GAMMA GENERATOR (Marsaglia & Tsang Method)
+ */
+function randomGamma(shape, scale) {
+  if (shape < 1) {
+    // Boost via Ahrens-Dieter
+    return randomGamma(shape + 1, scale) * Math.pow(Math.random(), 1.0 / shape);
+  }
+  const d = shape - 1.0 / 3.0;
+  const c = 1.0 / Math.sqrt(9.0 * d);
+  while (true) {
+    let z = 0, v = 0;
+    while (v <= 0) {
+      z = randomNormal(0, 1);
+      v = 1.0 + c * z;
+    }
+    v = v * v * v;
+    const u = Math.random();
+    if (u < 1.0 - 0.0331 * z * z * z * z) {
+      return d * v * scale;
+    }
+    if (Math.log(u) < 0.5 * z * z + d - d * v + d * Math.log(v)) {
+      return d * v * scale;
+    }
+  }
+}
+
+/**
+ * QUANTILE HELPER
+ */
+function quantile(arr, q) {
+  const sorted = arr.slice().sort((a, b) => a - b);
+  const pos = (sorted.length - 1) * q;
+  const base = Math.floor(pos);
+  const rest = pos - base;
+  if (sorted[base + 1] !== undefined) {
+    return sorted[base] + rest * (sorted[base + 1] - sorted[base]);
+  } else {
+    return sorted[base];
+  }
+}
+
+/**
+ * PARSE XL LAYERS
+ */
+function parseLayers(str) {
+  const tokens = str.split(',').map(t => t.trim()).filter(t => t.length > 0);
+  const parsed = [];
+  tokens.forEach(tok => {
+    if (tok.includes('-')) {
+      const parts = tok.split('-');
+      let low = parseFloat(parts[0]);
+      let up = parseFloat(parts[1]);
+      if (!isNaN(low) && !isNaN(up)) {
+        if (up < low) {
+          const temp = low;
+          low = up;
+          up = temp;
+        }
+        parsed.push({ low, up, label: `${low}-${up}` });
+      }
+    } else {
+      const val = parseFloat(tok);
+      if (!isNaN(val)) {
+        parsed.push({ low: val, up: val + 25, label: `${val}-${val + 25}` });
+      }
+    }
+  });
+  return parsed;
+}
+
+/**
+ * CORE XL SIMULATION REPLICATING xl_pricing_simulator.py
+ */
+function runXLSimulation() {
+  const payouts = State.payouts;
+  if (payouts.length === 0) return;
+
+  // Mean & Std of input data
+  const dataMean = payouts.reduce((a, b) => a + b, 0) / payouts.length;
+  let sumSq = 0;
+  payouts.forEach(v => sumSq += Math.pow(v - dataMean, 2));
+  const dataStd = Math.sqrt(sumSq / (payouts.length - 1));
+
+  // Generate Simulated Payouts
+  const nSims = State.nSims;
+  const simPayouts = new Float64Array(nSims);
+  const dist = State.distType;
+
+  if (dist === 'Lognormal') {
+    for (let i = 0; i < nSims; i++) {
+      simPayouts[i] = Math.max(0, randomLognormal(dataMean, dataStd));
+    }
+  } else if (dist === 'Gamma') {
+    const shape = Math.pow(dataMean / dataStd, 2);
+    const scale = (dataStd * dataStd) / dataMean;
+    for (let i = 0; i < nSims; i++) {
+      simPayouts[i] = Math.max(0, randomGamma(shape, scale));
+    }
+  } else {
+    // Normal
+    for (let i = 0; i < nSims; i++) {
+      simPayouts[i] = Math.max(0, randomNormal(dataMean, dataStd));
+    }
+  }
+
+  State.simPayouts = simPayouts;
+
+  // Mean & Std of simulated draws
+  let simSum = 0;
+  for (let i = 0; i < nSims; i++) simSum += simPayouts[i];
+  const simMean = simSum / nSims;
+  let simSumSq = 0;
+  for (let i = 0; i < nSims; i++) simSumSq += Math.pow(simPayouts[i] - simMean, 2);
+  const simStd = Math.sqrt(simSumSq / (nSims - 1));
+
+  // Premium burnrate amount
+  const premiumBurnrate = simMean + State.stdevLoading * simStd;
+  const lrDecimal = State.lrPct / 100.0;
+  const scale = premiumBurnrate / lrDecimal;
+
+  // Parse specified layers
+  const parsedLayers = parseLayers(State.layersStr);
+  if (parsedLayers.length === 0) {
+    alert("Please provide valid XL layers like 150-175, 175-200");
+    return;
+  }
+
+  // Ensure continuous coverage bands
+  const sortedLayers = [...parsedLayers].sort((a, b) => a.low - b.low);
+  const xlLower = [0.0];
+  const xlUpper = [];
+  let lastUpper = 0.0;
+
+  sortedLayers.forEach(l => {
+    if (l.low > lastUpper) {
+      xlLower.push(lastUpper);
+      xlUpper.push(l.low);
+    }
+    xlLower.push(l.low);
+    xlUpper.push(l.up);
+    lastUpper = l.up;
+  });
+
+  const maxLimit = Math.max(sortedLayers[sortedLayers.length - 1].up, 100000.0);
+  if (xlUpper[xlUpper.length - 1] < maxLimit) {
+    xlLower.push(xlUpper[xlUpper.length - 1]);
+    xlUpper.push(maxLimit);
+  }
+
+  if (xlLower.length > 1 && xlLower[1] === xlLower[0]) {
+    xlLower.shift();
+  }
+
+  // Calculate continuous layer rates
+  let totalLayerRate = 0;
+  for (let k = 0; k < xlUpper.length; k++) {
+    const ded = (scale * xlLower[k]) / 100.0;
+    const cov = Math.max(0, (scale * xlUpper[k]) / 100.0 - ded);
+    let paySum = 0;
+    let paySq = 0;
+    for (let s = 0; s < nSims; s++) {
+      let p = simPayouts[s] - ded;
+      p = Math.max(0, Math.min(p, cov));
+      paySum += p;
+    }
+    const avgP = paySum / nSims;
+    for (let s = 0; s < nSims; s++) {
+      let p = simPayouts[s] - ded;
+      p = Math.max(0, Math.min(p, cov));
+      paySq += Math.pow(p - avgP, 2);
+    }
+    const sdP = Math.sqrt(paySq / (nSims - 1));
+    const rate = avgP + State.stdevLoading * sdP;
+    totalLayerRate += rate;
+  }
+
+  // Evaluate each user-specified layer
+  const layerResults = [];
+  parsedLayers.forEach(l => {
+    const ded = Math.max(0, (scale * l.low) / 100.0);
+    const cov = Math.max(0, (scale * l.up) / 100.0 - ded);
+
+    let paySum = 0;
+    for (let s = 0; s < nSims; s++) {
+      let p = simPayouts[s] - ded;
+      p = Math.max(0, Math.min(p, cov));
+      paySum += p;
+    }
+    const avgP = paySum / nSims;
+
+    let paySq = 0;
+    for (let s = 0; s < nSims; s++) {
+      let p = simPayouts[s] - ded;
+      p = Math.max(0, Math.min(p, cov));
+      paySq += Math.pow(p - avgP, 2);
+    }
+    const sdP = Math.sqrt(paySq / (nSims - 1));
+    const layerRate = avgP + State.stdevLoading * sdP;
+    const rol = cov > 0 ? ((layerRate / cov) * 100.0) : 0;
+    const relShare = totalLayerRate > 0 ? ((layerRate / totalLayerRate) * 100.0) : 0;
+
+    layerResults.push({
+      layer: l.label,
+      deductible: ded,
+      cover: cov,
+      avgPayout: avgP,
+      sdPayout: sdP,
+      layerRate: layerRate,
+      relShare: relShare,
+      rol: rol
+    });
+  });
+
+  State.results = {
+    dataMean,
+    dataStd,
+    simMean,
+    simStd,
+    premiumBurnrate,
+    scale,
+    totalLayerRate,
+    layerResults
+  };
+
+  renderAll();
+  showToast("Simulation & Pricing updated!");
+}
+
+/**
+ * UI RENDERING
+ */
+function renderAll() {
+  renderKPIs();
+  renderResultsTable();
+  renderCharts();
+  renderTowerAndExceedance();
+  renderDistDiagnostics();
+}
+
+function formatNum(val, dec = 2) {
+  return val.toLocaleString('en-IN', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+}
+
+function renderKPIs() {
+  const res = State.results;
+  if (!res) return;
+
+  document.getElementById('kpiBurnRate').textContent = formatNum(res.premiumBurnrate);
+  document.getElementById('kpiScale').textContent = formatNum(res.scale);
+  document.getElementById('kpiScaleSub').textContent = `At ${State.lrPct.toFixed(1)}% Loss Ratio`;
+  document.getElementById('kpiMeanPayout').textContent = formatNum(res.simMean);
+  document.getElementById('kpiHistoricalStats').textContent = `Data Mean: ${formatNum(res.dataMean, 1)} | SD: ${formatNum(res.dataStd, 1)}`;
+  document.getElementById('kpiTotalLayerRate').textContent = formatNum(res.totalLayerRate);
+  document.getElementById('badgeSimStats').textContent = `Distribution: ${State.distType} | ${State.nSims.toLocaleString()} Draws`;
+}
+
+function renderResultsTable() {
+  const tbody = document.getElementById('tbodyLayerResults');
+  tbody.innerHTML = '';
+  const rows = State.results.layerResults;
+
+  rows.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${r.layer}%</strong></td>
+      <td>${formatNum(r.deductible)}</td>
+      <td>${formatNum(r.cover)}</td>
+      <td>${formatNum(r.avgPayout)}</td>
+      <td><strong>${formatNum(r.layerRate)}</strong></td>
+      <td><span class="badge-pill">${r.relShare.toFixed(2)}%</span></td>
+      <td><span class="badge-pill warning" style="font-size:0.85rem;">${r.rol.toFixed(2)}%</span></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function getPlotlyLayout(title, extra = {}) {
+  const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+  return {
+    title: { text: title, font: { family: 'Outfit', size: 14, color: isDark ? '#f8fafc' : '#1e1b4b' } },
+    paper_bgcolor: 'transparent',
+    plot_bgcolor: 'transparent',
+    font: { family: 'Inter', color: isDark ? '#c7d2fe' : '#3730a3' },
+    margin: { l: 55, r: 25, t: 40, b: 40 },
+    xaxis: { gridcolor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' },
+    yaxis: { gridcolor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' },
+    legend: { orientation: 'h', y: -0.2 },
+    ...extra
+  };
+}
+
+function renderCharts() {
+  const res = State.results;
+  if (!res) return;
+
+  // Chart 1: Payout Distribution Histogram with Layer attachments
+  const hist = {
+    x: Array.from(State.simPayouts),
+    type: 'histogram',
+    nbinsx: 60,
+    name: 'Simulated Payouts',
+    marker: { color: 'rgba(99, 102, 241, 0.65)' }
+  };
+
+  const shapes = [];
+  res.layerResults.forEach((lr, idx) => {
+    const colors = ['#f59e0b', '#ef4444', '#10b981', '#06b6d4'];
+    shapes.push({
+      type: 'line',
+      x0: lr.deductible,
+      x1: lr.deductible,
+      y0: 0,
+      y1: 1,
+      yref: 'paper',
+      line: { color: colors[idx % colors.length], width: 2, dash: 'dash' }
+    });
+  });
+
+  Plotly.newPlot('chartPayoutDist', [hist], getPlotlyLayout('Simulated Loss Distribution with Layer Attachments', {
+    shapes: shapes,
+    xaxis: { title: 'Annual Aggregate Loss / Payout Amount' },
+    yaxis: { title: 'Frequency / Count' }
+  }), { responsive: true, displayModeBar: false });
+
+  // Chart 2: Rate on Line (ROL %) Bar Chart
+  const rolBar = {
+    x: res.layerResults.map(r => `Layer ${r.layer}%`),
+    y: res.layerResults.map(r => r.rol),
+    type: 'bar',
+    marker: { color: '#f59e0b' },
+    text: res.layerResults.map(r => `${r.rol.toFixed(2)}%`),
+    textposition: 'auto'
+  };
+
+  Plotly.newPlot('chartROL', [rolBar], getPlotlyLayout('Rate on Line (ROL %) by XL Layer', {
+    yaxis: { title: 'ROL (%)' }
+  }), { responsive: true, displayModeBar: false });
+}
+
+function renderTowerAndExceedance() {
+  const res = State.results;
+  if (!res) return;
+
+  // EP Curve (Exceedance Probability)
+  const sorted = Array.from(State.simPayouts).sort((a, b) => b - a);
+  const n = sorted.length;
+  const step = Math.max(1, Math.floor(n / 200));
+  const epX = [];
+  const epY = [];
+
+  for (let i = 0; i < n; i += step) {
+    const prob = (i + 1) / n;
+    epX.push(sorted[i]);
+    epY.push(prob * 100);
+  }
+
+  const epTrace = {
+    x: epX,
+    y: epY,
+    type: 'scatter',
+    mode: 'lines',
+    name: 'Exceedance Curve',
+    line: { color: '#6366f1', width: 3 }
+  };
+
+  Plotly.newPlot('chartEPCurve', [epTrace], getPlotlyLayout('Exceedance Probability Curve (Loss vs Exceedance %)', {
+    xaxis: { title: 'Loss Amount' },
+    yaxis: { title: 'Exceedance Probability (%)', type: 'log' }
+  }), { responsive: true, displayModeBar: false });
+
+  // Reinsurance Tower (Stacked Bar)
+  const towerTraces = [];
+  let currentBottom = 0;
+
+  // Base Retention
+  const firstDed = res.layerResults[0].deductible;
+  towerTraces.push({
+    x: ['Reinsurance Tower'],
+    y: [firstDed],
+    name: 'Insurer Retention (Net)',
+    type: 'bar',
+    marker: { color: '#334155' }
+  });
+
+  res.layerResults.forEach((lr, idx) => {
+    const colors = ['#f59e0b', '#6366f1', '#10b981', '#06b6d4'];
+    towerTraces.push({
+      x: ['Reinsurance Tower'],
+      y: [lr.cover],
+      name: `Cover: ${lr.layer}% (${formatNum(lr.cover, 0)})`,
+      type: 'bar',
+      marker: { color: colors[idx % colors.length] }
+    });
+  });
+
+  Plotly.newPlot('chartTower', towerTraces, getPlotlyLayout('Layer Attachment & Limit Tower', {
+    barmode: 'stack',
+    yaxis: { title: 'Loss Amount Thresholds' }
+  }), { responsive: true, displayModeBar: false });
+
+  // Return Period Scenarios
+  const tbody = document.getElementById('tbodyReturnPeriods');
+  tbody.innerHTML = '';
+  const returnPeriods = [
+    { name: '1-in-5 Year', q: 0.80, ep: '20%' },
+    { name: '1-in-10 Year', q: 0.90, ep: '10%' },
+    { name: '1-in-25 Year', q: 0.96, ep: '4%' },
+    { name: '1-in-50 Year', q: 0.98, ep: '2%' },
+    { name: '1-in-100 Year', q: 0.99, ep: '1%' }
+  ];
+
+  returnPeriods.forEach(rp => {
+    const loss = quantile(State.simPayouts, rp.q);
+    let layerImpact = 'Retained within Net Account';
+    res.layerResults.forEach(lr => {
+      if (loss >= lr.deductible) {
+        const pay = Math.min(loss - lr.deductible, lr.cover);
+        layerImpact = `Triggers Layer ${lr.layer}% (Payout: ${formatNum(pay)})`;
+      }
+    });
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${rp.name}</strong></td>
+      <td>${rp.ep}</td>
+      <td><strong>${formatNum(loss)}</strong></td>
+      <td><span class="badge-pill ${loss > res.layerResults[0].deductible ? 'warning' : 'success'}">${layerImpact}</span></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderDistDiagnostics() {
+  const payouts = State.payouts;
+  const mean = State.results.dataMean;
+  const std = State.results.dataStd;
+
+  // Generate density curves
+  const xVals = [];
+  const minX = 0;
+  const maxX = mean + 3.5 * std;
+  const steps = 150;
+  for (let i = 0; i <= steps; i++) {
+    xVals.push(minX + (i / steps) * (maxX - minX));
+  }
+
+  // Normal PDF
+  const normY = xVals.map(x => (1.0 / (std * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow((x - mean) / std, 2)));
+
+  // Lognormal PDF
+  const v = std * std;
+  const mu_ln = Math.log(mean * mean / Math.sqrt(v + mean * mean));
+  const sig_ln = Math.sqrt(Math.log(1 + v / (mean * mean)));
+  const lognY = xVals.map(x => {
+    if (x <= 0) return 0;
+    return (1.0 / (x * sig_ln * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow((Math.log(x) - mu_ln) / sig_ln, 2));
+  });
+
+  // Gamma PDF
+  const k = Math.pow(mean / std, 2);
+  const theta = (std * std) / mean;
+  // Gamma density approximation
+  const gammaY = xVals.map(x => {
+    if (x <= 0) return 0;
+    return (1.0 / (Math.pow(theta, k) * 1.0)) * Math.pow(x, k - 1) * Math.exp(-x / theta) * 0.0000000001; // scaled display
+  });
+
+  const traces = [
+    { x: xVals, y: normY, name: 'Normal PDF', type: 'scatter', mode: 'lines', line: { color: '#6366f1', width: 2 } },
+    { x: xVals, y: lognY, name: 'Lognormal PDF', type: 'scatter', mode: 'lines', line: { color: '#f59e0b', width: 2 } }
+  ];
+
+  Plotly.newPlot('chartMultiDist', traces, getPlotlyLayout('Theoretical Fitted Densities', {
+    xaxis: { title: 'Loss Amount' },
+    yaxis: { title: 'Density' }
+  }), { responsive: true, displayModeBar: false });
+
+  // Table
+  const tbody = document.getElementById('tbodyDistParams');
+  tbody.innerHTML = `
+    <tr>
+      <td><strong>Normal</strong></td>
+      <td>Mean: ${formatNum(mean, 1)}</td>
+      <td>Std Dev: ${formatNum(std, 1)}</td>
+      <td>Symmetric (Skew = 0)</td>
+      <td>${formatNum(mean + 2.326 * std)}</td>
+    </tr>
+    <tr>
+      <td><strong>Lognormal</strong></td>
+      <td>&mu;<sub>ln</sub>: ${mu_ln.toFixed(3)}</td>
+      <td>&sigma;<sub>ln</sub>: ${sig_ln.toFixed(3)}</td>
+      <td>Right Skewed / Heavy Right Tail</td>
+      <td>${formatNum(Math.exp(mu_ln + 2.326 * sig_ln))}</td>
+    </tr>
+    <tr>
+      <td><strong>Gamma</strong></td>
+      <td>Shape (k): ${k.toFixed(3)}</td>
+      <td>Scale (&theta;): ${theta.toFixed(1)}</td>
+      <td>Positively Skewed</td>
+      <td>${formatNum(quantile(State.simPayouts, 0.99))}</td>
+    </tr>
+  `;
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+function exportTableToCSV(tableId, filename) {
+  const table = document.getElementById(tableId);
+  const rows = Array.from(table.querySelectorAll('tr'));
+  const csvContent = rows.map(r => {
+    const cols = Array.from(r.querySelectorAll('th, td'));
+    return cols.map(c => `"${c.textContent.replace(/"/g, '""').trim()}"`).join(',');
+  }).join('\n');
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute('download', filename);
+  link.click();
+}
+
+/**
+ * FILE & PASTE HANDLERS
+ */
+function handlePayoutUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    const text = evt.target.result;
+    const parts = text.split(/[\r\n,;]+/).map(p => parseFloat(p.trim())).filter(p => !isNaN(p) && p > 0);
+    if (parts.length > 0) {
+      State.payouts = parts;
+      document.getElementById('statusPayout').textContent = `✓ Uploaded: ${file.name} (${parts.length} values)`;
+      runXLSimulation();
+    } else {
+      alert("No valid numeric values found in file.");
+    }
+  };
+  reader.readAsText(file);
+}
+
+function handlePastePayout(e) {
+  const text = e.target.value.trim();
+  if (!text) return;
+  const parts = text.split(/[\r\n,;]+/).map(p => parseFloat(p.trim())).filter(p => !isNaN(p) && p > 0);
+  if (parts.length >= 3) {
+    State.payouts = parts;
+    document.getElementById('statusPayout').textContent = `✓ Pasted: ${parts.length} values`;
+    runXLSimulation();
+  }
+}
+
+/**
+ * EVENT LISTENERS SETUP
+ */
+document.addEventListener('DOMContentLoaded', () => {
+  // Navigation Tabs
+  const tabs = document.querySelectorAll('.nav-tab');
+  const panes = document.querySelectorAll('.tab-pane');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      panes.forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      const target = document.getElementById(tab.getAttribute('data-tab'));
+      if (target) target.classList.add('active');
+      setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
+    });
+  });
+
+  // Slider Loss Ratio
+  const sliderLR = document.getElementById('sliderLR');
+  const valLR = document.getElementById('valLR');
+  sliderLR.addEventListener('input', e => {
+    State.lrPct = parseFloat(e.target.value);
+    valLR.textContent = State.lrPct.toFixed(1) + "%";
+  });
+
+  // Slider Loading
+  const sliderLoading = document.getElementById('sliderLoading');
+  const valLoading = document.getElementById('valLoading');
+  sliderLoading.addEventListener('input', e => {
+    State.stdevLoading = parseFloat(e.target.value);
+    valLoading.textContent = State.stdevLoading.toFixed(2);
+  });
+
+  // Slider Sims
+  const sliderSims = document.getElementById('sliderSims');
+  const valSims = document.getElementById('valSims');
+  sliderSims.addEventListener('input', e => {
+    State.nSims = parseInt(e.target.value, 10);
+    valSims.textContent = State.nSims.toLocaleString();
+  });
+
+  // Inputs
+  document.getElementById('inputLayers').addEventListener('change', e => State.layersStr = e.target.value);
+  document.getElementById('inputSI').addEventListener('change', e => State.sumInsured = parseFloat(e.target.value) || 100000);
+  document.getElementById('selDist').addEventListener('change', e => State.distType = e.target.value);
+
+  // File & Paste
+  document.getElementById('filePayout').addEventListener('change', handlePayoutUpload);
+  document.getElementById('textPastePayout').addEventListener('input', handlePastePayout);
+
+  // Trigger Recalculate
+  document.getElementById('btnRecalculate').addEventListener('click', () => {
+    State.layersStr = document.getElementById('inputLayers').value;
+    State.lrPct = parseFloat(sliderLR.value);
+    State.stdevLoading = parseFloat(sliderLoading.value);
+    State.distType = document.getElementById('selDist').value;
+    State.nSims = parseInt(sliderSims.value, 10);
+    runXLSimulation();
+  });
+
+  // Presentation Toggle
+  document.getElementById('btnPresToggle').addEventListener('click', () => {
+    document.body.classList.toggle('presentation-mode');
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+  });
+
+  // Theme Toggle
+  document.getElementById('btnThemeToggle').addEventListener('click', () => {
+    const curr = document.documentElement.getAttribute('data-theme');
+    const next = curr === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    State.theme = next;
+    renderCharts();
+    renderTowerAndExceedance();
+    renderDistDiagnostics();
+  });
+
+  // Export CSV
+  document.getElementById('btnExportCsv').addEventListener('click', () => {
+    exportTableToCSV('tblLayerResults', 'xl_layer_pricing.csv');
+  });
+
+  // Initial Run
+  runXLSimulation();
+});
+</script>
+</body>
+</html>
