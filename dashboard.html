@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -735,6 +735,12 @@
       opacity: 1;
     }
   </style>
+
+  <!-- KaTeX for pristine mathematical typesetting -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}], throwOnError: false});"></script>
+
 </head>
 <body>
 
@@ -1097,7 +1103,7 @@
         <div class="method-block">
           <h3>1. Non-Proportional Layer Mechanics</h3>
           <p>
-            An Excess of Loss (XL) reinsurance treaty is structured as <em>Limit xs Deductible</em> (e.g., $C 	ext{ xs } D$). For any annual aggregate claim payout $X$, the reinsurer pays:
+            An Excess of Loss (XL) reinsurance treaty is structured as <em>Limit xs Deductible</em> (e.g., $C \text{ xs } D$). For any annual aggregate claim payout $X$, the reinsurer pays:
             <br>
             $$Y = \min(\max(X - D, 0), C)$$
             Where $D$ is the attachment point (deductible) and $C$ is the layer capacity (cover limit).
@@ -1109,7 +1115,7 @@
           <p>
             Rather than relying solely on pure burning cost (expected payout $\mathbb{E}[Y]$), reinsurance actuaries apply standard deviation loading to compensate for volatility and capital cost:
             <br>
-            $$	ext{Layer Rate} = \mathbb{E}[Y] + \lambda 	imes \sigma(Y)$$
+            $$\text{Layer Rate} = \mathbb{E}[Y] + \lambda \times \sigma(Y)$$
             Where $\lambda$ is the <code>stdev_loading</code> scalar factor (typically 0.15 to 0.35 depending on market hardening).
           </p>
         </div>
@@ -1119,10 +1125,10 @@
           <p>
             The contractual attachment bands (e.g. 150-175%) are expressed relative to the Subject Premium. The scaling factor is calculated from the reference Premium Burn-Rate Amount and the target Loss Ratio ($LR$):
             <br>
-            $$	ext{Scale} = rac{\mathbb{E}[X] + \lambda 	imes \sigma(X)}{LR / 100}$$
+            $$\text{Scale} = \frac{\mathbb{E}[X] + \lambda \times \sigma(X)}{LR / 100}$$
             For each specified layer $[l_i, u_i]$:
             <br>
-            $$D_i = 	ext{Scale} 	imes rac{l_i}{100}, \quad C_i = 	ext{Scale} 	imes rac{u_i}{100} - D_i$$
+            $$D_i = \text{Scale} \times \frac{l_i}{100}, \quad C_i = \text{Scale} \times \frac{u_i}{100} - D_i$$
           </p>
         </div>
 
@@ -1131,7 +1137,8 @@
           <p>
             Rate on Line measures the annual reinsurance premium as a percentage of the layer limit:
             <br>
-            $$	ext{ROL} = \left(rac{	ext{Layer Rate}}{C_i}ight) 	imes 100\%$$
+            $$\text{ROL} = \left(\frac{\text{Layer Rate}}{C_i}
+\right) \times 100\%$$
             Higher ROL signifies that the layer is lower down in the tower (attaching closer to the expected loss) or has higher exceedance probability.
           </p>
         </div>
@@ -1177,7 +1184,7 @@ const State = {
   nSims: 10000,
   simPayouts: [],
   results: null,
-  theme: 'dark'
+  theme: 'light'
 };
 
 /**
