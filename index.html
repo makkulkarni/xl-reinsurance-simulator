@@ -1105,7 +1105,7 @@
           <p>
             An Excess of Loss (XL) reinsurance treaty is structured as <em>Limit xs Deductible</em> (e.g., $C \text{ xs } D$). For any annual aggregate claim payout $X$, the reinsurer pays:
             <br>
-            $$Y = \min(\max(X - D, 0), C)$$
+            $$Y = \min\left(\max(X - D, 0), \; C\right)$$
             Where $D$ is the attachment point (deductible) and $C$ is the layer capacity (cover limit).
           </p>
         </div>
@@ -1123,9 +1123,9 @@
         <div class="method-block">
           <h3>3. Treaty Scaling Factor</h3>
           <p>
-            The contractual attachment bands (e.g. 150-175%) are expressed relative to the Subject Premium. The scaling factor is calculated from the reference Premium Burn-Rate Amount and the target Loss Ratio ($LR$):
+            The contractual attachment bands (e.g. 150&ndash;175%) are expressed relative to the Subject Premium. The scaling factor is calculated from the reference Premium Burn-Rate Amount and the target Loss Ratio ($\text{LR}$):
             <br>
-            $$\text{Scale} = \frac{\mathbb{E}[X] + \lambda \times \sigma(X)}{LR / 100}$$
+            $$\text{Scale} = \frac{\mathbb{E}[X] + \lambda \times \sigma(X)}{\text{LR} / 100}$$
             For each specified layer $[l_i, u_i]$:
             <br>
             $$D_i = \text{Scale} \times \frac{l_i}{100}, \quad C_i = \text{Scale} \times \frac{u_i}{100} - D_i$$
@@ -1137,8 +1137,7 @@
           <p>
             Rate on Line measures the annual reinsurance premium as a percentage of the layer limit:
             <br>
-            $$\text{ROL} = \left(\frac{\text{Layer Rate}}{C_i}
-\right) \times 100\%$$
+            $$\text{ROL} = \left(\frac{\text{Layer Rate}}{C_i}\right) \times 100\%$$
             Higher ROL signifies that the layer is lower down in the tower (attaching closer to the expected loss) or has higher exceedance probability.
           </p>
         </div>
